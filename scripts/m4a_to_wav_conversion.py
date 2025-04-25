@@ -6,7 +6,7 @@ from typing import Optional
 
 
 def convert_m4a_directory_to_wav(
-    input_dir: str,
+    input_dir: Optional[str] = None,
     output_dir: Optional[str] = None,
     ffmpeg_path: Optional[str] = "ffmpeg",
 ):
@@ -116,6 +116,5 @@ def convert_m4a_directory_to_wav(
     print(f"Output directory:       {os.path.abspath(output_dir)}")
 
 
-# --- How to use the Python script ---
 if __name__ == "__main__":
     fire.Fire(convert_m4a_directory_to_wav)
