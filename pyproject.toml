@@ -22,8 +22,3 @@ dev = [
     "ipykernel>=7.1.0",
     "ipython>=9.10.0",
 ]
-
-# [tool.uv.workspace]
-# members = [
-#     "notebooks/deepseek-ocr",
-# ]
