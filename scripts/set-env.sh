@@ -18,7 +18,7 @@ set -u
 # - Does not modify the parent shell unless its output is evaluated or the
 #   script is sourced.
 
-VERSION="0.1.0"
+VERSION="0.2.0"
 
 usage() {
   cat <<-USAGE
@@ -27,6 +27,7 @@ Usage: $0 [OPTIONS]
 Options:
   -f, --file FILE     Read variables from FILE (required)
   -n, --dry-run       Print exports (default). No side effects.
+  -a, --apply         Apply exports directly (must be sourced into shell).
   -s, --silent        Suppress warnings for malformed lines.
   -v, --version       Print script version and exit.
   -h, --help          Show this help and exit.
@@ -52,6 +53,7 @@ FILE=".env"
 DRY_RUN=true
 SILENT=false
 VERBOSE=false
+APPLY=false
 
 while [[ ${#} -gt 0 ]]; do
   case "$1" in
@@ -59,6 +61,8 @@ while [[ ${#} -gt 0 ]]; do
       FILE="$2"; shift 2;;
     -n|--dry-run)
       DRY_RUN=true; shift;;
+    -a|--apply)
+      APPLY=true; shift;;
     -V|--verbose)
       VERBOSE=true; shift;;
     -s|--silent)
@@ -84,6 +88,16 @@ fi
 
 if [[ ! -f "$FILE" ]]; then
   die "File not found: $FILE"
+fi
+
+# Detect whether the script is being sourced by comparing BASH_SOURCE to $0
+SOURCED=false
+if [[ "${BASH_SOURCE[0]}" != "${0}" ]]; then
+  SOURCED=true
+fi
+
+if [[ "$APPLY" == "true" && "$SOURCED" != "true" ]]; then
+  die "--apply requires the script to be sourced into the current shell.\nUse: source $0 -f $FILE --apply\nor: eval \"$($0 -f $FILE)\""
 fi
 
 # parse_line: parse a single dotenv line into KEY and VALUE
@@ -133,10 +147,19 @@ while IFS= read -r LINE || [[ -n "$LINE" ]]; do
   parse_line "$LINE"
   case $? in
     0)
-      # successful parse: print a safe export statement
-      printf 'export %s=%s\n' "$KEY" "$VALUE"
-      if [[ "$VERBOSE" == "true" ]]; then
-        >&2 printf 'export %s=%s\n' "$KEY" "$VALUE"
+      # successful parse
+      if [[ "$APPLY" == "true" && "$SOURCED" == "true" ]]; then
+        # Export directly into the current (sourcing) shell
+        eval "export $KEY=$VALUE"
+        if [[ "$VERBOSE" == "true" ]]; then
+          >&2 printf 'export %s=%s\n' "$KEY" "$VALUE"
+        fi
+      else
+        # Default behavior: print export to stdout (safe for eval)
+        printf 'export %s=%s\n' "$KEY" "$VALUE"
+        if [[ "$VERBOSE" == "true" ]]; then
+          >&2 printf 'export %s=%s\n' "$KEY" "$VALUE"
+        fi
       fi
       ;;
     1)
