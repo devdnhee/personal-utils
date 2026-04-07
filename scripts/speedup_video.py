@@ -1,14 +1,25 @@
 # /// script
 # dependencies = [
 #   "fire",
+#   "rich>=13.0.0",
 # ]
 # ///
 
+import logging
 import os
 import shutil
 import subprocess
 
 import fire
+from rich.logging import RichHandler
+
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(message)s",
+    datefmt="[%X]",
+    handlers=[RichHandler(rich_tracebacks=True)],
+)
+log = logging.getLogger(__name__)
 
 
 def speedup_video(
@@ -51,12 +62,12 @@ def speedup_video(
         output,
     ]
 
-    print(f"Speeding up '{input}' by {factor}x  →  '{output}'")
+    log.info(f"Speeding up '{input}' by {factor}x  →  '{output}'")
     try:
         subprocess.run(command, check=True, capture_output=True, text=True)
-        print("Done.")
+        log.info("Done.")
     except subprocess.CalledProcessError as e:
-        print(f"FFmpeg failed (exit code {e.returncode}):\n{e.stderr}")
+        log.error(f"FFmpeg failed (exit code {e.returncode}):\n{e.stderr}")
         raise
 
 

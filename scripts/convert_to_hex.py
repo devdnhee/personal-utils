@@ -2,12 +2,24 @@
 # dependencies = [
 #  "Pillow",
 #  "fire",
+#  "rich>=13.0.0",
 # ]
 # requires-python = ">=3.8"
 # ///
-from PIL import Image
+
+import logging
+
 import fire
-import json
+from PIL import Image
+from rich.logging import RichHandler
+
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(message)s",
+    datefmt="[%X]",
+    handlers=[RichHandler(rich_tracebacks=True)],
+)
+log = logging.getLogger(__name__)
 
 
 def _hex_to_rgb(hex_color):
@@ -81,13 +93,12 @@ def convert_to_color(
                     new_pixels[x, y] = (r, g, b, a)
 
         new_img.save(output_path, format="PNG")
-        print(f"Image successfully saved to {output_path}")
+        log.info(f"Image successfully saved to {output_path}")
 
     except Exception as e:
-        print(f"An error occurred: {e}")
+        log.exception(f"An error occurred: {e}")
 
 
 # Example usage
 if __name__ == "__main__":
     fire.Fire(convert_to_color)
-

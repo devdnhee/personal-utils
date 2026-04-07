@@ -1,8 +1,26 @@
+# /// script
+# dependencies = [
+#   "fire>=0.7.0",
+#   "rich>=13.0.0",
+# ]
+# ///
+
+import logging
 import os
-import subprocess
 import shutil
-import fire
+import subprocess
 from typing import Optional
+
+import fire
+from rich.logging import RichHandler
+
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(message)s",
+    datefmt="[%X]",
+    handlers=[RichHandler(rich_tracebacks=True)],
+)
+log = logging.getLogger(__name__)
 
 
 def convert_m4a_directory_to_wav(
@@ -45,11 +63,11 @@ def convert_m4a_directory_to_wav(
 
     if output_dir is None:
         output_dir = input_dir  # Convert in-place
-        print(
+        log.info(
             f"Output directory not specified. Saving .wav files alongside .m4a files in '{input_dir}'."
         )
     elif not os.path.exists(output_dir):
-        print(f"Output directory '{output_dir}' does not exist. Creating it.")
+        log.info(f"Output directory '{output_dir}' does not exist. Creating it.")
         os.makedirs(output_dir)  # Create the root output directory
 
     # 2. Walk through the directory tree
@@ -72,7 +90,7 @@ def convert_m4a_directory_to_wav(
                     current_output_dir, base_filename + ".wav"
                 )
 
-                print(f"Converting: {input_m4a_path}  ==>  {output_wav_path}")
+                log.info(f"Converting: {input_m4a_path}  ==>  {output_wav_path}")
 
                 # 3. Construct and run the FFmpeg command
                 command = [
@@ -81,39 +99,27 @@ def convert_m4a_directory_to_wav(
                     input_m4a_path,
                     "-acodec",
                     "pcm_s16le",  # Standard WAV codec
-                    # You can add other options here if needed, e.g.:
-                    # "-ar", "44100", # Sample rate
-                    # "-ac", "1",     # Mono channel
                     "-y",  # Overwrite output without asking
                     output_wav_path,
                 ]
 
                 try:
-                    # Use capture_output=True to hide ffmpeg's console noise
-                    # Add check=True to raise CalledProcessError on failure
-                    result = subprocess.run(
+                    subprocess.run(
                         command, check=True, capture_output=True, text=True
                     )
-                    # print(f"Successfully converted: {output_wav_path}") # Uncomment for more verbose success logs
-                    # FFmpeg often prints info to stderr, even on success
-                    # print("FFmpeg output (stderr):\n", result.stderr)
                     converted_count += 1
                 except subprocess.CalledProcessError as e:
-                    print(f"--- FAILED to convert: {input_m4a_path} ---")
-                    print(f"Error Code: {e.returncode}")
-                    print(f"FFmpeg Command: {' '.join(e.cmd)}")
-                    print(f"FFmpeg stderr:\n{e.stderr}")
-                    print(f"FFmpeg stdout:\n{e.stdout}")
+                    log.error(f"FAILED to convert: {input_m4a_path}")
+                    log.error(f"Error Code: {e.returncode}")
+                    log.error(f"FFmpeg stderr:\n{e.stderr}")
                     failed_count += 1
                 except Exception as e:
-                    print(f"--- FAILED to convert: {input_m4a_path} ---")
-                    print(f"An unexpected error occurred: {e}")
+                    log.exception(f"FAILED to convert: {input_m4a_path}")
                     failed_count += 1
 
-    print("\n--- Conversion Summary ---")
-    print(f"Successfully converted: {converted_count} file(s)")
-    print(f"Failed conversions:     {failed_count} file(s)")
-    print(f"Output directory:       {os.path.abspath(output_dir)}")
+    log.info(f"Successfully converted: {converted_count} file(s)")
+    log.info(f"Failed conversions:     {failed_count} file(s)")
+    log.info(f"Output directory:       {os.path.abspath(output_dir)}")
 
 
 if __name__ == "__main__":

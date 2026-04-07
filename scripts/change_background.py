@@ -3,14 +3,27 @@
 #   "numpy>=2.2.2",
 #   "pillow>=11.1.0",
 #   "fire>=0.7.0",
+#   "rich>=13.0.0",
 # ]
 # ///
 
+import logging
+import os
+from collections import Counter
+
+import fire
 import numpy as np
 from PIL import Image
-from collections import Counter
-import fire
-import os
+from rich.logging import RichHandler
+
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(message)s",
+    datefmt="[%X]",
+    handlers=[RichHandler(rich_tracebacks=True)],
+)
+log = logging.getLogger(__name__)
+
 
 def hex_to_rgb(hex_color):
     """Converts hex color string to RGB tuple."""
@@ -28,7 +41,7 @@ def change_background(input_path: str, hex_color: str, output_path: str = None, 
     :param tolerance: Color distance tolerance to match the background (0-255).
     """
     if not os.path.exists(input_path):
-        print(f"Error: File '{input_path}' not found.")
+        log.error(f"File '{input_path}' not found.")
         return
 
     if output_path is None:
@@ -48,23 +61,23 @@ def change_background(input_path: str, hex_color: str, output_path: str = None, 
         right_edge = data[:, -1, :]
 
         edges = np.concatenate([top_edge, bottom_edge, left_edge, right_edge])
-        
+
         # Count occurrences of each RGB color
         # Convert to tuples for hashability in Counter
         edge_colors = [tuple(c) for c in edges]
         most_common_color, _ = Counter(edge_colors).most_common(1)[0]
-        
-        print(f"Detected background color (RGB): {most_common_color}")
-        
+
+        log.info(f"Detected background color (RGB): {most_common_color}")
+
         # Convert target hex to RGB
         target_rgb = hex_to_rgb(hex_color)
-        print(f"Changing background to (RGB): {target_rgb}")
+        log.info(f"Changing background to (RGB): {target_rgb}")
 
         # Create a mask for pixels that are within the tolerance of the detected background color
         # Using Euclidean distance for color similarity
         diff = data.astype(np.float32) - np.array(most_common_color, dtype=np.float32)
         dist = np.sqrt(np.sum(diff**2, axis=-1))
-        
+
         mask = dist <= tolerance
 
         # Apply the new color to the masked areas
@@ -74,10 +87,10 @@ def change_background(input_path: str, hex_color: str, output_path: str = None, 
         # Save the result
         result_img = Image.fromarray(new_data)
         result_img.save(output_path)
-        print(f"Success! Saved modified image to: {output_path}")
+        log.info(f"Saved modified image to: {output_path}")
 
     except Exception as e:
-        print(f"An error occurred: {e}")
+        log.exception(f"An error occurred: {e}")
 
 if __name__ == "__main__":
     fire.Fire(change_background)

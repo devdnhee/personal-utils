@@ -8,6 +8,7 @@ dependencies = [
     "fire>=0.7.0",
     "opencv-python>=4.13.0.90",
     "pillow>=11.2.1",
+    "rich>=13.0.0",
 ]
 
 [dependency-groups]

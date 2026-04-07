@@ -2,25 +2,39 @@
 # dependencies = [
 #   "opencv-python>=4.13.0.90",
 #   "pillow>=11.2.1",
+#   "fire>=0.7.0",
+#   "rich>=13.0.0",
 # ]
 # ///
 
+import logging
+import os
+
 import cv2
+import fire
 import numpy as np
 from PIL import Image
-import fire
-import os
+from rich.logging import RichHandler
+
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(message)s",
+    datefmt="[%X]",
+    handlers=[RichHandler(rich_tracebacks=True)],
+)
+log = logging.getLogger(__name__)
+
 
 def remove_background(input_path: str, output_path: str = None):
     """
     Removes the background from an image using OpenCV's GrabCut algorithm and Pillow.
 
     :param input_path: Path to the input image file.
-    :param output_path: Path to save the output PNG file. If not provided, 
+    :param output_path: Path to save the output PNG file. If not provided,
                         it saves as [input_filename]_no_bg.png in the same directory.
     """
     if not os.path.exists(input_path):
-        print(f"Error: Input file '{input_path}' not found.")
+        log.error(f"Input file '{input_path}' not found.")
         return
 
     if output_path is None:
@@ -28,12 +42,12 @@ def remove_background(input_path: str, output_path: str = None):
         output_path = f"{base}_no_bg.png"
 
     try:
-        print(f"Processing image: {input_path}...")
-        
+        log.info(f"Processing image: {input_path}...")
+
         # Load image with OpenCV
         img = cv2.imread(input_path)
         if img is None:
-            print(f"Error: Could not read image '{input_path}'.")
+            log.error(f"Could not read image '{input_path}'.")
             return
 
         # Initialize mask, background and foreground models
@@ -58,7 +72,7 @@ def remove_background(input_path: str, output_path: str = None):
 
         # Convert to RGBA (with transparency)
         img_rgb = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
-        
+
         # Create an RGBA image
         # We use Pillow directly for easier RGBA construction from numpy array
         rgba_data = np.zeros((height, width, 4), dtype=np.uint8)
@@ -68,13 +82,11 @@ def remove_background(input_path: str, output_path: str = None):
         # Convert to Pillow for saving
         output_image = Image.fromarray(rgba_data, 'RGBA')
         output_image.save(output_path)
-        
-        print(f"Background removed successfully. Saved to: {output_path}")
+
+        log.info(f"Background removed successfully. Saved to: {output_path}")
 
     except Exception as e:
-        print(f"An error occurred during background removal: {e}")
+        log.exception(f"An error occurred during background removal: {e}")
 
 if __name__ == "__main__":
     fire.Fire(remove_background)
-
-

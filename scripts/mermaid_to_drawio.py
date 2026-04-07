@@ -1,6 +1,7 @@
 # /// script
 # dependencies = [
 #   "fire>=0.7.0",
+#   "rich>=13.0.0",
 # ]
 # requires-python = ">=3.12"
 # ///
@@ -21,6 +22,8 @@ Usage:
     uv run scripts/mermaid_to_drawio.py diagram.mmd --output_path=out.drawio
 """
 
+import logging
+import os
 import re
 import xml.etree.ElementTree as ET
 from collections import defaultdict, deque
@@ -29,6 +32,15 @@ from typing import Optional
 from xml.dom import minidom
 
 import fire
+from rich.logging import RichHandler
+
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(message)s",
+    datefmt="[%X]",
+    handlers=[RichHandler(rich_tracebacks=True)],
+)
+log = logging.getLogger(__name__)
 
 
 # ---------------------------------------------------------------------------
@@ -377,10 +389,8 @@ def convert(input_path: str, output_path: str = None) -> None:
     :param output_path: Destination .drawio file. Defaults to
                         <input_stem>.drawio next to the source file.
     """
-    import os
-
     if not os.path.exists(input_path):
-        print(f"Error: '{input_path}' not found.")
+        log.error(f"'{input_path}' not found.")
         return
 
     if output_path is None:
@@ -398,7 +408,7 @@ def convert(input_path: str, output_path: str = None) -> None:
     nodes, edges, direction = parse_mermaid(content)
 
     if not nodes:
-        print("Warning: no nodes found. Is this a supported mermaid flowchart?")
+        log.warning("No nodes found. Is this a supported mermaid flowchart?")
         return
 
     positions = _layout_nodes(nodes, edges, direction)
@@ -407,9 +417,7 @@ def convert(input_path: str, output_path: str = None) -> None:
     with open(output_path, "w", encoding="utf-8") as f:
         f.write(xml_output)
 
-    print(
-        f"Converted {len(nodes)} node(s) and {len(edges)} edge(s)  →  {output_path}"
-    )
+    log.info(f"Converted {len(nodes)} node(s) and {len(edges)} edge(s)  →  {output_path}")
 
 
 if __name__ == "__main__":

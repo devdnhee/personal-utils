@@ -1,6 +1,7 @@
 # /// script
 # dependencies = [
 #   "fire>=0.7.0",
+#   "rich>=13.0.0",
 # ]
 # requires-python = ">=3.12"
 # ///
@@ -21,6 +22,7 @@ Usage:
 """
 
 import base64
+import logging
 import os
 import re
 import xml.etree.ElementTree as ET
@@ -28,6 +30,15 @@ import zlib
 from dataclasses import dataclass, field
 
 import fire
+from rich.logging import RichHandler
+
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(message)s",
+    datefmt="[%X]",
+    handlers=[RichHandler(rich_tracebacks=True)],
+)
+log = logging.getLogger(__name__)
 
 
 # ---------------------------------------------------------------------------
@@ -325,7 +336,7 @@ def convert(
                         (TD, LR, RL, BT). Auto-detected when omitted.
     """
     if not os.path.exists(input_path):
-        print(f"Error: '{input_path}' not found.")
+        log.error(f"'{input_path}' not found.")
         return
 
     if output_path is None:
@@ -338,7 +349,7 @@ def convert(
     nodes, edges, id_map, inferred_dir = _parse_drawio(content)
 
     if not nodes:
-        print("Warning: no nodes found. Is this a supported draw.io flowchart?")
+        log.warning("No nodes found. Is this a supported draw.io flowchart?")
         return
 
     final_dir = direction.upper() if direction else inferred_dir
@@ -347,9 +358,7 @@ def convert(
     with open(output_path, "w", encoding="utf-8") as f:
         f.write(mermaid_output)
 
-    print(
-        f"Converted {len(nodes)} node(s) and {len(edges)} edge(s)  →  {output_path}"
-    )
+    log.info(f"Converted {len(nodes)} node(s) and {len(edges)} edge(s)  →  {output_path}")
 
 
 if __name__ == "__main__":
