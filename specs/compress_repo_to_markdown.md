@@ -66,6 +66,7 @@ When the repository already exists, there exist different modes to handle confli
 - append: appends content from the new file to the old file, separated by '----'
 - ignore: keep the old file exactly as is
 - block: raise an error
+- merge: tries to merge the files, and places git conflict markers when it conflicts.
 
 ALWAYS log what type of change you make to each conflicting file. 
 

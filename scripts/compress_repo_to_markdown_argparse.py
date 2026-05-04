@@ -9,6 +9,7 @@
 """Compress a git repository to a single markdown (or docx) file, and decompress it back."""
 
 import argparse
+import difflib
 import re
 import subprocess
 from pathlib import Path
@@ -96,7 +97,29 @@ def encode(args: argparse.Namespace) -> None:
     console.log(f"Encoded {len(files)} files to [bold]{output_path}[/bold]")
 
 
-_MODES = ("overwrite", "append", "ignore", "block")
+_MODES = ("overwrite", "append", "ignore", "block", "merge")
+
+
+def _two_way_merge(existing: str, incoming: str) -> tuple[str, bool]:
+    """Merge two strings line-by-line; mark conflicts with git-style markers."""
+    if existing == incoming:
+        return existing, False
+    a = existing.splitlines(keepends=True)
+    b = incoming.splitlines(keepends=True)
+    matcher = difflib.SequenceMatcher(None, a, b, autojunk=False)
+    result: list[str] = []
+    has_conflicts = False
+    for tag, i1, i2, j1, j2 in matcher.get_opcodes():
+        if tag == "equal":
+            result.extend(a[i1:i2])
+        else:
+            has_conflicts = True
+            result.append("<<<<<<< existing\n")
+            result.extend(a[i1:i2])
+            result.append("=======\n")
+            result.extend(b[j1:j2])
+            result.append(">>>>>>> incoming\n")
+    return "".join(result), has_conflicts
 
 
 def _parse_markdown(md_content: str) -> dict[str, str]:
@@ -204,6 +227,14 @@ def decode(args: argparse.Namespace) -> None:
                 existing = dest.read_text(encoding="utf-8")
                 dest.write_text(existing + "\n----\n" + content, encoding="utf-8")
                 console.log(f"[blue]append[/blue]     {rel_path}")
+            elif mode == "merge":
+                existing = dest.read_text(encoding="utf-8")
+                merged, has_conflicts = _two_way_merge(existing, content)
+                dest.write_text(merged, encoding="utf-8")
+                if has_conflicts:
+                    console.log(f"[yellow]conflict[/yellow]   {rel_path}")
+                else:
+                    console.log(f"[green]merged[/green]     {rel_path}")
         else:
             dest.write_text(content, encoding="utf-8")
             console.log(f"[green]create[/green]     {rel_path}")
@@ -222,7 +253,7 @@ def main() -> None:
     dec = sub.add_parser("decode", help="Decompress a markdown or docx file to a directory.")
     dec.add_argument("input", help="Input markdown or docx file.")
     dec.add_argument("-o", "--output", default=".", help="Output directory (default: current directory).")
-    dec.add_argument("-m", "--mode", choices=_MODES, default="block", help="Conflict resolution mode (default: block).")
+    dec.add_argument("-m", "--mode", choices=_MODES, default="block", help="Conflict resolution mode (default: block). 'merge' attempts a line-level merge and writes git conflict markers on conflicts.")
 
     args = parser.parse_args()
     if args.command == "encode":
